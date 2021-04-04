@@ -48,7 +48,7 @@ namespace KhanoumiPaymentGrpc.Services
                 });
             }
 
-            if (request.KhanoumiGateType.Equals(KhanoumiGateType.Saman))
+            if (request.KhanoumiGateType.Equals((int)KhanoumiGateType.Saman))
             {
                 var samanPaymentRequest = new SamanPaymentTokenRequest
                 {
@@ -71,31 +71,8 @@ namespace KhanoumiPaymentGrpc.Services
                 });
             }
 
-
-            if (request.KhanoumiGateType.Equals(KhanoumiGateType.Saman))
-            {
-                var samanPaymentRequest = new SamanPaymentTokenRequest
-                {
-                    Action = "token",
-                    Amount = request.Amount,
-                    TerminalId = SamanTerminalId,
-                    ResNum = request.OrderGuid,
-                    CellNumber = Convert.ToInt64(request.Mobile),
-                    RedirectUrl = request.CallBackUrl,
-                };
-
-                var result = GetTokenFromSamanPayment(samanPaymentRequest, context.CancellationToken).Result;
-
-                return Task.FromResult(new TokenResponse
-                {
-                    Status = 200,
-                    Message = "Succeeded",
-                    Token = result.Token,
-                    Bankurl = SamanRedirectUrl
-                });
-            }
-
-
+            //if (request.KhanoumiGateType.Equals(KhanoumiGateType.ZarinPal))
+            //{ }
 
             return Task.FromResult(new TokenResponse
             {
