@@ -15,7 +15,6 @@ namespace KhanoumiPaymentGrpc.Models
             Tejarat = 4,
             HaftsadoBistoChahar = 5,
             ZarinPal = 6
-
         }
     }
 }

@@ -1,18 +1,17 @@
+using Grpc.Core;
+using KhanoumiPaymentGrpc.Models.SamanBank;
+using KhanoumiPyamentGrpc;
+using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
-using Grpc.Core;
-using KhanoumiPaymentGrpc.Models;
-using KhanoumiPyamentGrpc;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using static KhanoumiPaymentGrpc.Models.Constants.KhanoumiPaymentServiceConstants.ConstantsProvider;
 using static KhanoumiPaymentGrpc.Models.Constants.SamanServiceConstants.SamanServiceConstantProvider;
 using static KhanoumiPaymentGrpc.Models.Enumeration;
+
 
 namespace KhanoumiPaymentGrpc.Services
 {
@@ -27,14 +26,14 @@ namespace KhanoumiPaymentGrpc.Services
             _clientFactory = clientFactory;
         }
 
-        public override Task<PaymentResponse> Pay(PaymentRequest request, ServerCallContext context)
+        public override Task<TokenResponse> GetToken(TokenRequest request, ServerCallContext context)
         {
             if (request == null)
             {
-                return Task.FromResult(new PaymentResponse
+                return Task.FromResult(new TokenResponse
                 {
                     Status = 400,
-                    Message = "Bad Request."
+                    Message = "Bad Request. request is null."
                 });
             }
 
@@ -42,71 +41,78 @@ namespace KhanoumiPaymentGrpc.Services
                 || !AuthenticationPairs.ContainsValue(request.MerchantPassword)
                 || AuthenticationPairs[request.MerchandId] != GrpcPassword)
             {
-                return Task.FromResult(new PaymentResponse
+                return Task.FromResult(new TokenResponse
                 {
                     Status = 401,
                     Message = "Authorization Failed."
                 });
             }
 
-
-
             if (request.KhanoumiGateType.Equals(KhanoumiGateType.Saman))
             {
-                var samanPaymentRequest = new SamanPaymentRequest
+                var samanPaymentRequest = new SamanPaymentTokenRequest
                 {
                     Action = "token",
                     Amount = request.Amount,
                     TerminalId = SamanTerminalId,
+                    ResNum = request.OrderGuid,
                     CellNumber = Convert.ToInt64(request.Mobile),
                     RedirectUrl = request.CallBackUrl,
-                    ResNum = request.OrderGuid
                 };
 
-                var tokenResult = SendViaToken(samanPaymentRequest);
+                var result = GetTokenFromSamanPayment(samanPaymentRequest, context.CancellationToken).Result;
+
+                return Task.FromResult(new TokenResponse
+                {
+                    Status = 200,
+                    Message = "Succeeded",
+                    Token = result.Token,
+                    Bankurl = SamanRedirectUrl
+                });
+            }
 
 
+            if (request.KhanoumiGateType.Equals(KhanoumiGateType.Saman))
+            {
+                var samanPaymentRequest = new SamanPaymentTokenRequest
+                {
+                    Action = "token",
+                    Amount = request.Amount,
+                    TerminalId = SamanTerminalId,
+                    ResNum = request.OrderGuid,
+                    CellNumber = Convert.ToInt64(request.Mobile),
+                    RedirectUrl = request.CallBackUrl,
+                };
+
+                var result = GetTokenFromSamanPayment(samanPaymentRequest, context.CancellationToken).Result;
+
+                return Task.FromResult(new TokenResponse
+                {
+                    Status = 200,
+                    Message = "Succeeded",
+                    Token = result.Token,
+                    Bankurl = SamanRedirectUrl
+                });
             }
 
 
 
-
-
-
-
-
-
-
-
-
-            //return Task.FromResult(new PaymentResponse
-            //{
-            //    Authority = "Hello " + request.MerchandId
-            //});
-
-            return null;
+            return Task.FromResult(new TokenResponse
+            {
+                Status = 400,
+                Message = "Bad Request. The Parameter KhanoumiGateType is not specified."
+            });
         }
-        public JsonResult SendViaToken(SamanPaymentRequest txn)
+        public async Task<SamanPaymentTokenResponse> GetTokenFromSamanPayment(SamanPaymentTokenRequest samanPaymentTokenRequest, CancellationToken cancellationToken)
         {
-            
-
-
-            //string urlAddress = "https://sep.shaparak.ir/MobilePG/MobilePayment";
-            //var restClient = new RestClient(urlAddress);
-            //var request = new RestRequest(Method.POST)
-            //{
-            //    RequestFormat = DataFormat.Json,
-            //    OnBeforeDeserialization = resp => { resp.ContentType = "application/json"; }
-            //};
-            ////to request a token you should set Actio property as token.
-
-            //request.AddBody(txn);
-            //var sepResult = restClient.Execute(request);
-            //var jsonSerializer = new JavaScriptSerializer();
-            //var sepPgToken = (IDictionary<string, object>)
-            //    jsonSerializer.DeserializeObject(sepResult.Content);
-            //return Json(sepPgToken);
-            return null;
+            var httpClient = _clientFactory.CreateClient("saman");
+            var serializedSamanPaymentRequest = await Task.Run(() => JsonSerializer.Serialize(samanPaymentTokenRequest), cancellationToken);
+            var httpContent = new StringContent(serializedSamanPaymentRequest, Encoding.UTF8, "application/json");
+            var apiResponse = await httpClient.PostAsync(httpClient.BaseAddress + SamanTokenRelationalUrl, httpContent, cancellationToken);
+            apiResponse.EnsureSuccessStatusCode();
+            var responseContent = await apiResponse?.Content.ReadAsStringAsync();
+            var result = await Task.Run(() => JsonSerializer.Deserialize<SamanPaymentTokenResponse>(responseContent), cancellationToken);
+            return result;
         }
     }
 }
