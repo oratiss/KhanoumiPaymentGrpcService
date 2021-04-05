@@ -9,11 +9,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.AspNetCore" Version="2.27.0" />
+    <Folder Include="Models\Constants\MellatServiceConstants\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\Constants\MellatServiceConstants\" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.36.0" />
   </ItemGroup>
 
 </Project>

@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using KhanoumiPaymentGrpc.Models.Constants.KhanoumiPaymentServiceConstants;
 using static KhanoumiPaymentGrpc.Models.Constants.KhanoumiPaymentServiceConstants.ConstantsProvider;
 using static KhanoumiPaymentGrpc.Models.Constants.SamanServiceConstants.SamanServiceConstantProvider;
 using static KhanoumiPaymentGrpc.Models.Enumeration;
@@ -19,11 +20,14 @@ namespace KhanoumiPaymentGrpc.Services
     {
         private readonly ILogger<KhanoumiPaymentService> _logger;
         private readonly IHttpClientFactory _clientFactory;
+        private ConstantsProvider _constantsProvider;
 
-        public KhanoumiPaymentService(ILogger<KhanoumiPaymentService> logger, IHttpClientFactory clientFactory)
+        public KhanoumiPaymentService(ILogger<KhanoumiPaymentService> logger, IHttpClientFactory clientFactory,
+            ConstantsProvider constantsProvider)
         {
             _logger = logger;
             _clientFactory = clientFactory;
+            _constantsProvider = constantsProvider;
         }
 
         public override Task<TokenResponse> GetToken(TokenRequest request, ServerCallContext context)
@@ -37,9 +41,9 @@ namespace KhanoumiPaymentGrpc.Services
                 });
             }
 
-            if (!AuthenticationPairs.ContainsKey(request.MerchandId)
-                || !AuthenticationPairs.ContainsValue(request.MerchantPassword)
-                || AuthenticationPairs[request.MerchandId] != GrpcPassword)
+            if (!_constantsProvider.AuthenticationPairs.ContainsKey(request.MerchandId)
+                || !_constantsProvider.AuthenticationPairs.ContainsValue(request.MerchantPassword)
+                || _constantsProvider.AuthenticationPairs[request.MerchandId] != GrpcPassword)
             {
                 return Task.FromResult(new TokenResponse
                 {
