@@ -7,5 +7,6 @@ namespace KhanoumiPaymentGrpc.Services
     public interface IKhanoumiPaymentService
     {
         Task<TokenResponse> GetToken(TokenRequest request, ServerCallContext context);
+        Task<PaymentResponse> Pay(PaymentRequest request, ServerCallContext context);
     }
 }
